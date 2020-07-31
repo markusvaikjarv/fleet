@@ -23,7 +23,27 @@ const DateOverview = (props) => {
 	const [selectedDate, setSelectedDate] = useState();
 	const [selectedVehicleDateData, setSelectedVehicleDateData] = useState({});
 
-	const queryRawData = async (apiKey, day, vehicle) => {
+	const findShortestDistance = async (waypoints, googleApiKey) => {
+		if (!googleApiKey) { return; }
+
+		const [origins, destinations] = [[], []];
+		for (const [origin, destination] of waypoints) {
+			origins.push(origin.join(','));
+			destinations.push(destination.join(','));
+		}
+
+		const { data } = await axios(`https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origins.join('|')}&destinations=${destinations.join('|')}&key=${googleApiKey}`);
+
+		const shortestDistanceInMeters = data.rows.reduce((acc, currentValue) => {
+			return acc + currentValue.elements.reduce((tripSum, trip) => {
+				return tripSum + trip.distance.value;
+			}, 0);
+		}, 0);
+
+		return parseInt(shortestDistanceInMeters / 1000);
+	};
+
+	const queryRawData = async (apiKey, googleApiKey, day, vehicle) => {
 		const formattedDay = day.format('YYYY-MM-DD');
 		const formattedNextDay = day.clone().add(1, 'days').format('YYYY-MM-DD');
 
@@ -68,6 +88,7 @@ const DateOverview = (props) => {
 
 		if (data.response.length >= 2) {
 			formattedData.distance = parseInt(data.response.slice(-1)[0].Distance - data.response[0].Distance, 10);
+			formattedData.shortestDistance = await findShortestDistance(waypoints, googleApiKey);
 		}
 
 		setSelectedVehicleDateData(formattedData);
@@ -80,10 +101,11 @@ const DateOverview = (props) => {
 			<OverviewDatePicker disabled={!props.vehicle} onChange={setSelectedDate} />
 			<GoButton type="primary"
 				disabled={!selectedDate || !props.apiKey}
-				onClick={async () => { await queryRawData(props.apiKey, selectedDate, props.vehicle); }}
+				onClick={async () => { await queryRawData(props.apiKey, props.googleApiKey, selectedDate, props.vehicle); }}
 			>Show route</GoButton>
 			<RawDataSummary
 				distance={selectedVehicleDateData.distance}
+				shortestDistance={selectedVehicleDateData.shortestDistance}
 				numberOfStops={selectedVehicleDateData.waypoints ? selectedVehicleDateData.waypoints.length : undefined}
 			/>
 		</Container>
@@ -93,6 +115,7 @@ const DateOverview = (props) => {
 DateOverview.propTypes = {
 	vehicle: PropTypes.object,
 	apiKey: PropTypes.string,
+	googleApiKey: PropTypes.string,
 };
 
 export default DateOverview;

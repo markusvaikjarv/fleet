@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import moment from 'moment';
 import { Input, Button, Table, message } from 'antd';
 import DateOverview from './components/DateOverview';
 import LeafletBox from './leaflet/LeafletBox';
@@ -17,6 +18,7 @@ const GoButton = styled(Button)`
 
 const App = () => {
 	const [apiKey, setApiKey] = useState();
+	const [googleApiKey, setGoogleApiKey] = useState();
 	const [latestData, setLatestData] = useState([]);
 	const [selectedVehicle, setSelectedVehicle] = useState();
 	const [selectedRowKey, setSelectedRowKey] = useState([]);
@@ -24,6 +26,7 @@ const App = () => {
 	useEffect(() => {
 		const queryParams = new URLSearchParams(window.location.search);
 		setApiKey(queryParams.get('apiKey'));
+		setGoogleApiKey(queryParams.get('googleApiKey'));
 	}, []);
 
 	const queryLatestData = async (apiKey) => {
@@ -45,7 +48,7 @@ const App = () => {
 			formattedDataPoints.push({
 				key,
 				objectId: dataPoint.objectId,
-				timestamp: dataPoint.timestamp,
+				timestamp: moment(dataPoint.timestamp).from(),
 				plate: dataPoint.plate,
 				speed: dataPoint.speed,
 				position: [dataPoint.latitude, dataPoint.longitude],
@@ -100,7 +103,7 @@ const App = () => {
 					onClick: () => selectVehicle(row.key),
 				})}
 			/>
-			<DateOverview vehicle={selectedVehicle} apiKey={apiKey} />
+			<DateOverview vehicle={selectedVehicle} apiKey={apiKey} googleApiKey={googleApiKey} />
 		</div>
 	);
 };
